@@ -6,12 +6,12 @@ module saat_guncelleme(
     input rx,
     output tx,
     output reg [5:0] led_gosterimi,
-    output reg [6:0] seg,  // 7-segment display için segment çıkışları
-    output reg dp,         // Ondalık nokta çıkışı
-    output reg [3:0] an    // Aktif 7-segment basamağı
+    output reg [6:0] seg,  // 7-segment display için segment ç?k??lar?
+    output reg dp,         // Ondal?k nokta ç?k???
+    output reg [3:0] an    // Aktif 7-segment basama??
 );
     
-    // Ba?lang?ç de?erleri
+    // baslangic degerleri
     reg [5:0] saniye = 5'd0, saniye_sonraki;
     reg [5:0] dakika = 5'd30, dakika_sonraki;
     reg [4:0] saat = 5'd18, saat_sonraki;
@@ -28,7 +28,7 @@ module saat_guncelleme(
     wire uart_rx_valid;
     wire uart_rx_break;
 
-    // UART RX modülünün başlatılması
+    // UART RX modülünün ba?lat?lmas?
     uart_rx uart_receiver (
         .CLK(CLK),
         .reset(reset),
@@ -43,11 +43,10 @@ module saat_guncelleme(
     wire uart_tx_busy;
     reg uart_tx_en;
     reg [7:0] uart_tx_data;
-    reg [1:0] digit_select = 2'b00;
     
     uart_tx #(
         .BIT_RATE(9600),
-        .CLK_HZ(50_000_000),
+        .CLK_HZ(100_000_000),
         .PAYLOAD_BITS(8)
     ) uart_transmitter (
         .CLK(CLK),
@@ -58,8 +57,9 @@ module saat_guncelleme(
         .uart_tx_busy(uart_tx_busy)
     );
     
+    reg [1:0] digit_select = 2'b00;
     always @* begin
-        // Varsay?lan atamalar
+        // Varsayilan atamalar
         saniye_sonraki = saniye;
         led_gosterimi = saniye;
         dakika_sonraki = dakika;
@@ -71,11 +71,11 @@ module saat_guncelleme(
         sayac_sonraki = sayac + 1;
         hiz_katsayisi_sonraki = hiz_katsayisi;
 
-        // Durdurma-ba?latma i?lemi
+        // durdurma-baslatma islemi
         if (butonlar[4]) 
             calisma_durumu = ~calisma_durumu;
 
-        // Ayarlama yap?lmas? için saat durmu? olmal?
+        // ayarlama yapilmasi icin saat durmus olmali
         if (~calisma_durumu) begin
             if (butonlar[0]) begin
                 saat_sonraki = (saat < 23) ? (saat + 1) : 0;
@@ -145,16 +145,16 @@ module saat_guncelleme(
             $display("SAAT CALISIYOR IKEN DUZENLEME YAPAMAZSINIZ.");
         end
         
-        // Saati h?zland?rma (2 kat h?zland?r?r)
+        // saati hizlandirma (2 kat hizlandirir)
         if (hiz_degisikligi) begin
             hiz_katsayisi_sonraki = hiz_katsayisi * 2;
         end else begin
             hiz_katsayisi = 1;
         end
         
-        // Durdurulmam??sa devam etsin
+        // durdurulmamissa devam etsin
         if (calisma_durumu) begin    
-            if (sayac >= (BIR_SANIYE / hiz_katsayisi)) begin // h?z katsay?s?na göre says?n
+            if (sayac >= (BIR_SANIYE / hiz_katsayisi)) begin // hiz katsayisina göre saysin
                 sayac_sonraki = 0;
                 saniye_sonraki = saniye + 1;
                 $display("Saat: %d, Dakika: %d, Saniye: %d", saat, dakika, saniye);
@@ -183,12 +183,12 @@ module saat_guncelleme(
          case(digit_select)
             2'b00: begin
                 seg = yedi_parcali_gosterim(saat_onluk_value); // Saat onluk
-                an = 4'b1110; // İlk 7-segment aktif
-                dp = 1'b1; // Ondalık noktası kapalı
+                an = 4'b1110; // ?lk 7-segment aktif
+                dp = 1'b1; // Ondal?k noktas? kapal?
             end
             2'b01: begin
                 seg = yedi_parcali_gosterim(saat_birlik_value); // Saat birlik
-                an = 4'b1101; // İkinci 7-segment aktif
+                an = 4'b1101; // ?kinci 7-segment aktif
                 dp = 1'b1;
             end
             2'b10: begin
@@ -203,8 +203,8 @@ module saat_guncelleme(
             end
         endcase
     end
-    // Multiplexing için değişkenler
     
+    // Multiplexing için de?i?kenler
     reg [3:0] saat_onluk_value, saat_birlik_value, dakika_onluk_value, dakika_birlik_value;
 
     // 7-segment gösterim verilerini güncelleme
@@ -230,7 +230,7 @@ module saat_guncelleme(
                 4'd7: yedi_parcali_gosterim = 7'b0001111; // '7' göster
                 4'd8: yedi_parcali_gosterim = 7'b0000000; // '8' göster
                 4'd9: yedi_parcali_gosterim = 7'b0000100; // '9' göster
-                default: yedi_parcali_gosterim = 7'b1111111; // Kapalı
+                default: yedi_parcali_gosterim = 7'b1111111; // Kapal?
             endcase
         end
     endfunction
@@ -240,7 +240,7 @@ module saat_guncelleme(
         if (reset) begin
             digit_select <= 2'b00; // Reset digit select
         end else begin
-            digit_select <= digit_select + 1; // Her saat dalgasında basamağı değiştir
+            digit_select <= digit_select + 1; // Her saat dalgas?nda basama?? de?i?tir
         end
     end
 endmodule

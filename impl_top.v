@@ -6,12 +6,12 @@ module impl_top(
     input rx,
     output tx,
     output [3:0] an,                // Basamak gösterimi
-    output [6:0] seg,               // 7 parçalı gösterimin bölümleri
-    output dp,                      // Ondalık gösterimin noktası
+    output [6:0] seg,               // 7 parçal? gösterimin bölümleri
+    output dp,                      // Ondal?k gösterimin noktas?
     output [5:0] led_gosterimi
 );
 
-    // Saat güncelleme modülünü çağır
+    // Saat güncelleme modülünü ça??r
     saat_guncelleme u_saat_guncelleme (
         .CLK(CLK),
         .reset(reset),

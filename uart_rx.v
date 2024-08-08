@@ -4,7 +4,7 @@ module uart_rx (
     input               uart_rxd,       // UART receive pin
     input               uart_rx_en,     // Receive enable
     output reg          uart_rx_valid,  // Valid data received
-    output reg [7:0]   uart_rx_data,    // Received data
+    output reg [7:0]    uart_rx_data,    // Received data
     output reg          uart_rx_break    // Break condition
 );
 
