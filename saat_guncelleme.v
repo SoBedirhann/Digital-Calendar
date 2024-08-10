@@ -6,29 +6,37 @@ module saat_guncelleme(
     input rx,
     output tx,
     output reg [5:0] led_gosterimi,
-    output reg [6:0] seg,  // 7-segment display için segment ç?k??lar?
-    output reg dp,         // Ondal?k nokta ç?k???
-    output reg [3:0] an    // Aktif 7-segment basama??
+    output [0:6] seg,  // 7-segment display icin segment cikislari
+    output reg dp,         // Ondalik nokta cikisi
+    output [3:0] an    // Aktif 7-segment basamagi
 );
     
     // baslangic degerleri
-    reg [5:0] saniye = 5'd0, saniye_sonraki;
-    reg [5:0] dakika = 5'd30, dakika_sonraki;
+    reg [5:0] saniye = 6'd0, saniye_sonraki;
+    reg [5:0] dakika = 6'd30, dakika_sonraki;
     reg [4:0] saat = 5'd18, saat_sonraki;
     reg [4:0] gun = 5'd30, gun_sonraki;
     reg [3:0] ay = 4'd7, ay_sonraki;
     reg [11:0] yil = 12'd2024, yil_sonraki;
-    reg calisma_durumu = 1'd1; 
-    reg [29:0] sayac = 29'd0, sayac_sonraki;
-    reg [6:0] hiz_katsayisi = 7'd1, hiz_katsayisi_sonraki; 
-    localparam BIR_SANIYE = 100000000;
+    
 
+    reg calisma_durumu = 1'd1; 
+
+    reg [29:0] sayac = 30'd0, sayac_sonraki;
+
+    reg [12:0] hiz_katsayisi = 13'd1, hiz_katsayisi_sonraki; 
+
+    localparam BIR_SANIYE = 100000000;
+    
+    reg[3:0] deger = 4'd0, deger_sonraki;
+    reg [3:0] saat_birlik_deger , dakika_birlik_deger;
+    reg [2:0] saat_onluk_deger, dakika_onluk_deger;
     // UART RX için sinyaller
     wire [7:0] uart_rx_data;
     wire uart_rx_valid;
     wire uart_rx_break;
-
-    // UART RX modülünün ba?lat?lmas?
+    
+    // UART RX modülünün baslatilmasi
     uart_rx uart_receiver (
         .CLK(CLK),
         .reset(reset),
@@ -57,7 +65,26 @@ module saat_guncelleme(
         .uart_tx_busy(uart_tx_busy)
     );
     
-    reg [1:0] digit_select = 2'b00;
+    wire temiz_sinyal_saat_arttir;
+    wire temiz_sinyal_saat_azalt;
+    wire temiz_sinyal_dakika_arttir;
+    wire temiz_sinyal_dakika_azalt;
+    wire temiz_sinyal_durdur_baslat;
+    
+    // Önceki temiz sinyaller
+    reg temiz_sinyal_onceki_saat_arttir;
+    reg temiz_sinyal_onceki_saat_azalt;
+    reg temiz_sinyal_onceki_dakika_arttir;
+    reg temiz_sinyal_onceki_dakika_azalt;
+    reg temiz_sinyal_onceki_durdur_baslat;
+    
+    // Debounce modüllerini ekliyoruz
+    debounce debounce_saat_arttir(.clk(CLK), .reset(reset), .buton(butonlar[0]), .temiz_sinyal(temiz_sinyal_saat_arttir));
+    debounce debounce_saat_azalt(.clk(CLK), .reset(reset), .buton(butonlar[1]), .temiz_sinyal(temiz_sinyal_saat_azalt));
+    debounce debounce_dakika_arttir(.clk(CLK), .reset(reset), .buton(butonlar[2]), .temiz_sinyal(temiz_sinyal_dakika_arttir));
+    debounce debounce_dakika_azalt(.clk(CLK), .reset(reset), .buton(butonlar[3]), .temiz_sinyal(temiz_sinyal_dakika_azalt));
+    debounce debounce_durdur_baslat(.clk(CLK), .reset(reset), .buton(butonlar[4]), .temiz_sinyal(temiz_sinyal_durdur_baslat));
+    
     always @* begin
         // Varsayilan atamalar
         saniye_sonraki = saniye;
@@ -67,110 +94,166 @@ module saat_guncelleme(
         gun_sonraki = gun;
         ay_sonraki = ay;
         yil_sonraki = yil;
-        calisma_durumu = calisma_durumu;
         sayac_sonraki = sayac + 1;
-        hiz_katsayisi_sonraki = hiz_katsayisi;
 
-        // durdurma-baslatma islemi
-        if (butonlar[4]) 
-            calisma_durumu = ~calisma_durumu;
+        hiz_katsayisi_sonraki = hiz_katsayisi;
+     
+         //                                                      UART Komutlari
+//    if (uart_rx_valid) begin
+//        // 'T' komutunu algila ve mevcut tarihi yazdir
+//        if (uart_rx_data == 8'h54) begin // ASCII 'T'
+//            uart_tx_en = 1'b1;
+//            uart_tx_data = "Tarih ve Saat: "; // Ornek baslik
+
+//            // Tarihi ve saati yazdir
+//            // Her bir degeri ASCII olarak gonder
+//            uart_tx_data = 8'h30 + (gun / 10); // gun'un onluk basamagini gonder
+//            uart_tx_data = 8'h30 + (gun % 10); // gun'un birlik basamagini gonder
+//            uart_tx_data = ".";
+
+//            uart_tx_data = 8'h30 + (ay / 10);  // ay'in onluk basamagini gonder
+//            uart_tx_data = 8'h30 + (ay % 10);  // ay'in birlik basamagini gonder
+//            uart_tx_data = ".";
+
+//            uart_tx_data = 8'h30 + ((yil / 1000) % 10); // yil'in binlik basamagini gonder
+//            uart_tx_data = 8'h30 + ((yil / 100) % 10);  // yil'in yuzluk basamagini gonder
+//            uart_tx_data = 8'h30 + ((yil / 10) % 10);   // yil'in onluk basamagini gonder
+//            uart_tx_data = 8'h30 + (yil % 10);          // yil'in birlik basamagini gonder
+//            uart_tx_data = " ";
+
+//            uart_tx_data = 8'h30 + (saat / 10);  // saat'in onluk basamagini gonder
+//            uart_tx_data = 8'h30 + (saat % 10);  // saat'in birlik basamagini gonder
+//            uart_tx_data = ":";
+
+//            uart_tx_data = 8'h30 + (dakika / 10); // dakika'nin onluk basamagini gonder
+//            uart_tx_data = 8'h30 + (dakika % 10); // dakika'nin birlik basamagini gonder
+//            uart_tx_data = ":";
+
+//            uart_tx_data = 8'h30 + (saniye / 10); // saniye'nin onluk basamagini gonder
+//            uart_tx_data = 8'h30 + (saniye % 10); // saniye'nin birlik basamagini gonder
+
+//            uart_tx_en = 1'b0; // Gonderimi durdur
+//        end
+
+//        // 'G' komutunu algila ve yeni tarihi ayarla
+//        if (uart_rx_data == 8'h47) begin // ASCII 'G'
+//            uart_tx_en = 1'b0;
+//            // G komutundan sonra gelen veriyi ayr??t?r ve tarihi güncelle
+//            gun_sonraki = (uart_rx_data[7:4] * 10) + uart_rx_data[3:0]; // Gün
+//            ay_sonraki = (uart_rx_data[7:4] * 10) + uart_rx_data[3:0];  // Ay
+//            yil_sonraki = (uart_rx_data[7:4] * 1000) + (uart_rx_data[3:0] * 100) + (uart_rx_data[7:4] * 10) + uart_rx_data[3:0]; // Yil
+//            saat_sonraki = (uart_rx_data[7:4] * 10) + uart_rx_data[3:0]; // Saat
+//            dakika_sonraki = (uart_rx_data[7:4] * 10) + uart_rx_data[3:0]; // Dakika
+//            saniye_sonraki = (uart_rx_data[7:4] * 10) + uart_rx_data[3:0]; // Saniye
+//        end
+//    end
+        
+
+        if(hiz_degisikligi) begin
+            if(hiz_katsayisi < 8192) begin
+                hiz_katsayisi_sonraki = hiz_katsayisi + 1;
+            end
+        end else begin
+            hiz_katsayisi_sonraki = 1;
+        end
 
         // ayarlama yapilmasi icin saat durmus olmali
-        if (~calisma_durumu) begin
-            if (butonlar[0]) begin
-                saat_sonraki = (saat < 23) ? (saat + 1) : 0;
-                if (saat == 0) begin 
-                    gun_sonraki = gun + 1;
-                    if (gun >= 31) begin
-                        gun_sonraki = 1;
-                        ay_sonraki = ay + 1;
-                        if (ay >= 12) begin
-                            ay_sonraki = 1;
-                            yil_sonraki = yil + 1;
-                        end
-                    end                       
-                end
+        // bu kisimda yorum satirina aldigimiz yerler istenen olaya gore degisir. 
+        // eger saat ve dakikanin degismesiyle diger bolumler de degisecekse yorum satirlari kaldirilir.
+        // saati arttirma
+        if (temiz_sinyal_saat_arttir && ~temiz_sinyal_onceki_saat_arttir && ~calisma_durumu) begin
+            saat_sonraki <= saat + 1;
+            if (saat == 23) begin 
+                saat_sonraki <= 0;
+//                gun_sonraki <= gun + 1;
+//                if (gun == 31) begin
+//                    gun_sonraki <= 1;
+//                    ay_sonraki <= ay + 1;
+//                    if (ay == 12) begin
+//                        ay_sonraki <= 1;
+//                        yil_sonraki <= yil + 1;
+//                    end
+//                end                       
             end
-            if (butonlar[1]) begin
-                saat_sonraki = (saat > 0) ? (saat - 1) : 23;
-                if (saat == 23) begin
-                    gun_sonraki = gun - 1;
-                    if (gun == 0) begin
-                        gun_sonraki = 31;
-                        ay_sonraki = ay - 1;
-                        if (ay == 0) begin
-                            ay_sonraki = 12;
-                            yil_sonraki = yil - 1;
-                        end
-                    end
-                end
-            end
-            if (butonlar[2]) begin
-                dakika_sonraki = (dakika < 59) ? (dakika + 1) : 0; 
-                if (dakika == 0) begin
-                    saat_sonraki = saat + 1;
-                    if (saat >= 24) begin
-                        saat_sonraki = 0;
-                        gun_sonraki = gun + 1;
-                        if (gun >= 31) begin
-                            gun_sonraki = 1;
-                            ay_sonraki = ay + 1;
-                            if (ay >= 12) begin
-                                ay_sonraki = 1;
-                                yil_sonraki = yil + 1;
-                            end
-                        end
-                    end
-                end
-            end
-            if (butonlar[3]) begin
-                dakika_sonraki = (dakika > 0) ? (dakika - 1) : 59;
-                if (dakika == 59) begin
-                    saat_sonraki = saat - 1;
-                    if (saat == 23) begin
-                        gun_sonraki = gun - 1;
-                        if (gun == 0) begin
-                            gun_sonraki = 31;
-                            ay_sonraki = ay - 1;
-                            if (ay == 0) begin
-                                ay_sonraki = 12;
-                                yil_sonraki = yil - 1;
-                            end
-                        end
-                    end
-                end 
-            end
-        end 
-        if (calisma_durumu && (butonlar[0] || butonlar[1] || butonlar[2] || butonlar[3])) begin
-            $display("SAAT CALISIYOR IKEN DUZENLEME YAPAMAZSINIZ.");
         end
         
-        // saati hizlandirma (2 kat hizlandirir)
-        if (hiz_degisikligi) begin
-            hiz_katsayisi_sonraki = hiz_katsayisi * 2;
-        end else begin
-            hiz_katsayisi = 1;
+        //saati azaltma
+        if (temiz_sinyal_saat_azalt && ~temiz_sinyal_onceki_saat_azalt && ~calisma_durumu) begin
+            saat_sonraki <= saat - 1;
+            if (saat == 0) begin
+                saat_sonraki <= 23;
+//                gun_sonraki <= gun - 1;
+//                if (gun == 1) begin
+//                    gun_sonraki <= 31;
+//                    ay_sonraki <= ay - 1;
+//                    if (ay == 1) begin
+//                        ay_sonraki <= 12;
+//                        yil_sonraki <= yil - 1;
+//                    end
+//                end
+            end
+        end
+
+        // dakikayi arttirma
+        if (temiz_sinyal_dakika_arttir && ~temiz_sinyal_onceki_dakika_arttir && ~calisma_durumu) begin
+            dakika_sonraki <= dakika + 1; 
+            if (dakika == 59) begin
+                dakika_sonraki <= 0;
+//                saat_sonraki <= saat + 1;
+//                if (saat == 23) begin
+//                    saat_sonraki <= 0;
+//                    gun_sonraki <= gun + 1;
+//                    if (gun == 31) begin
+//                        gun_sonraki <= 1;
+//                        ay_sonraki <= ay + 1;
+//                        if (ay == 12) begin
+//                            ay_sonraki <= 1;
+//                            yil_sonraki <= yil + 1;
+//                        end
+//                    end
+//                end
+            end
+        end
+
+        // dakikayi azaltma
+        if (temiz_sinyal_dakika_azalt && ~temiz_sinyal_onceki_dakika_azalt && ~calisma_durumu) begin
+            dakika_sonraki <= dakika - 1;
+            if (dakika == 0) begin
+                dakika_sonraki <= 59;
+//                saat_sonraki <= saat - 1;
+//                if (saat == 0) begin
+//                    saat_sonraki <= 23;
+//                    gun_sonraki <= gun - 1;
+//                    if (gun == 1) begin
+//                        gun_sonraki <= 31;
+//                        ay_sonraki <= ay - 1;
+//                        if (ay == 1) begin
+//                            ay_sonraki = 12;
+//                            yil_sonraki = yil - 1;
+//                        end
+//                    end
+//                end
+            end 
         end
         
         // durdurulmamissa devam etsin
         if (calisma_durumu) begin    
-            if (sayac >= (BIR_SANIYE / hiz_katsayisi)) begin // hiz katsayisina göre saysin
+            if (sayac >= (BIR_SANIYE * hiz_katsayisi)) begin // hiz katsayisina göre saysin
                 sayac_sonraki = 0;
                 saniye_sonraki = saniye + 1;
-                $display("Saat: %d, Dakika: %d, Saniye: %d", saat, dakika, saniye);
-                if (saniye >= 60) begin 
+                if (saniye == 59) begin 
                     saniye_sonraki = 0;
                     dakika_sonraki = dakika + 1;
-                    if (dakika >= 60) begin 
+                    if (dakika == 59) begin 
                         dakika_sonraki = 0;
                         saat_sonraki = saat + 1;
-                        if (saat >= 24) begin 
+                        if (saat == 23) begin 
                             saat_sonraki = 0;
                             gun_sonraki = gun + 1;
-                            if (gun >= 31) begin 
+                            if (gun == 31) begin 
                                 gun_sonraki = 1;
                                 ay_sonraki = ay + 1;
-                                if (ay >= 12) begin
+                                if (ay == 12) begin
                                     ay_sonraki = 1;
                                     yil_sonraki = yil + 1;
                                 end
@@ -180,67 +263,55 @@ module saat_guncelleme(
                 end
             end
         end
-         case(digit_select)
-            2'b00: begin
-                seg = yedi_parcali_gosterim(saat_onluk_value); // Saat onluk
-                an = 4'b1110; // ?lk 7-segment aktif
-                dp = 1'b1; // Ondal?k noktas? kapal?
-            end
-            2'b01: begin
-                seg = yedi_parcali_gosterim(saat_birlik_value); // Saat birlik
-                an = 4'b1101; // ?kinci 7-segment aktif
-                dp = 1'b1;
-            end
-            2'b10: begin
-                seg = yedi_parcali_gosterim(dakika_onluk_value); // Dakika onluk
-                an = 4'b1011; // Üçüncü 7-segment aktif
-                dp = 1'b1;
-            end
-            2'b11: begin
-                seg = yedi_parcali_gosterim(dakika_birlik_value); // Dakika birlik
-                an = 4'b0111; // Dördüncü 7-segment aktif
-                dp = 1'b1;
-            end
-        endcase
-    end
+
+        // 7 segment display icin basamaklara ayirdik.
+        saat_onluk_deger <= (saat / 10);
+        saat_birlik_deger <= (saat % 10);
+        dakika_onluk_deger <= (dakika / 10);
+        dakika_birlik_deger <= (dakika % 10);
+        dp <= 1'd1;
+    end  
     
-    // Multiplexing için de?i?kenler
-    reg [3:0] saat_onluk_value, saat_birlik_value, dakika_onluk_value, dakika_birlik_value;
+    seg7_control(.clk_100MHz(CLK),.reset(reset),.hrs_tens(saat_onluk_deger),.hrs_ones(saat_birlik_deger),.mins_tens(dakika_onluk_deger),.mins_ones(dakika_birlik_deger),.seg(seg),.an(an));
 
-    // 7-segment gösterim verilerini güncelleme
-    always @* begin
-        saat_onluk_value = (saat / 10);
-        saat_birlik_value = (saat % 10);
-        dakika_onluk_value = (dakika / 10);
-        dakika_birlik_value = (dakika % 10);
-    end
-
-    // 7-segment gösterim için fonksiyon
-    function [6:0] yedi_parcali_gosterim;
-        input [3:0] value;
-        begin
-            case (value)
-                4'd0: yedi_parcali_gosterim = 7'b0000001; // '0' göster
-                4'd1: yedi_parcali_gosterim = 7'b1001111; // '1' göster
-                4'd2: yedi_parcali_gosterim = 7'b0010010; // '2' göster
-                4'd3: yedi_parcali_gosterim = 7'b0000110; // '3' göster
-                4'd4: yedi_parcali_gosterim = 7'b1001100; // '4' göster
-                4'd5: yedi_parcali_gosterim = 7'b0100100; // '5' göster
-                4'd6: yedi_parcali_gosterim = 7'b0100000; // '6' göster
-                4'd7: yedi_parcali_gosterim = 7'b0001111; // '7' göster
-                4'd8: yedi_parcali_gosterim = 7'b0000000; // '8' göster
-                4'd9: yedi_parcali_gosterim = 7'b0000100; // '9' göster
-                default: yedi_parcali_gosterim = 7'b1111111; // Kapal?
-            endcase
-        end
-    endfunction
-
-    // Clock bölme ve basamak seçimi için
     always @(posedge CLK or posedge reset) begin
         if (reset) begin
-            digit_select <= 2'b00; // Reset digit select
+            saniye <= 6'd0;
+            dakika <= 6'd30;
+            saat <= 5'd18;
+            gun <= 5'd30;
+            ay <= 4'd7;
+            yil <= 12'd2024;
+            
+            calisma_durumu <= 1'd1;    
+
+            sayac <= 30'd0;
+
+            hiz_katsayisi <= 13'd1;
+
         end else begin
-            digit_select <= digit_select + 1; // Her saat dalgas?nda basama?? de?i?tir
+            saniye <= saniye_sonraki;
+            dakika <= dakika_sonraki;
+            saat <= saat_sonraki;
+            gun <= gun_sonraki;
+            ay <= ay_sonraki;
+            yil <= yil_sonraki;
+            
+            if (temiz_sinyal_durdur_baslat && ~temiz_sinyal_onceki_durdur_baslat) begin
+                calisma_durumu <= ~calisma_durumu; // Sadece pozitif kenarda durum değiştir
+            end
+            temiz_sinyal_onceki_durdur_baslat <= temiz_sinyal_durdur_baslat; // Önceki durumu güncelle
+            
+            sayac <= sayac_sonraki;
+            
+            hiz_katsayisi <= hiz_katsayisi_sonraki;
+            
+             // Temiz sinyal güncellemeleri
+            temiz_sinyal_onceki_saat_arttir <= temiz_sinyal_saat_arttir;
+            temiz_sinyal_onceki_saat_azalt <= temiz_sinyal_saat_azalt;
+            temiz_sinyal_onceki_dakika_arttir <= temiz_sinyal_dakika_arttir;
+            temiz_sinyal_onceki_dakika_azalt <= temiz_sinyal_dakika_azalt;
         end
     end
+    
 endmodule
