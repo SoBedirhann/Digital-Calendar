@@ -4,7 +4,7 @@ module debounce(
     input wire clk,          // Saat sinyali
     input wire reset,        // Reset sinyali
     input wire buton,        // Mekanik butondan gelen sinyal
-    output reg temiz_sinyal  // Titreşimsiz (debounced) çıkış sinyali
+    output reg temiz_sinyal  // Titre?imsiz (debounced) ç?k?? sinyali
 );
 
     reg [15:0] sayac;        // Sayaç
@@ -20,10 +20,10 @@ module debounce(
                 if (sayac < 16'hFFFF) begin
                     sayac <= sayac + 1;
                 end else begin
-                    temiz_sinyal <= buton_durum; // Titreşimsiz çıkış sinyali güncellenir
+                    temiz_sinyal <= buton_durum; // Titre?imsiz ç?k?? sinyali güncellenir
                 end
             end else begin
-                sayac <= 0;             // Buton durumu değiştiğinde sayaç sıfırlanır
+                sayac <= 0;             // Buton durumu de?i?ti?inde sayaç s?f?rlan?r
                 buton_durum <= buton;   // Yeni buton durumu kaydedilir
             end
         end

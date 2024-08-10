@@ -3,16 +3,17 @@
 module saat_guncelleme(
     input CLK, reset, hiz_degisikligi,
     input [4:0] butonlar,
+    input [5:0] saniye_ayari,
     input rx,
     output tx,
-    output reg [5:0] led_gosterimi,
+    output reg [5:0] led_gosterimi, // saniye yani
     output [0:6] seg,  // 7-segment display icin segment cikislari
-    output reg dp,         // Ondalik nokta cikisi
+    output reg dp,     // Ondalik nokta cikisi
     output [3:0] an    // Aktif 7-segment basamagi
 );
-    
+
     // baslangic degerleri
-    reg [5:0] saniye = 6'd0, saniye_sonraki;
+    reg [5:0] saniye_sonraki;
     reg [5:0] dakika = 6'd30, dakika_sonraki;
     reg [4:0] saat = 5'd18, saat_sonraki;
     reg [4:0] gun = 5'd30, gun_sonraki;
@@ -38,8 +39,8 @@ module saat_guncelleme(
     
     // UART RX modülünün baslatilmasi
     uart_rx uart_receiver (
-        .CLK(CLK),
-        .reset(reset),
+        .clk(CLK),
+        .resetn(reset),
         .uart_rxd(rx),
         .uart_rx_en(1'b1),
         .uart_rx_break(uart_rx_break),
@@ -52,13 +53,14 @@ module saat_guncelleme(
     reg uart_tx_en;
     reg [7:0] uart_tx_data;
     
-    uart_tx #(
-        .BIT_RATE(9600),
-        .CLK_HZ(100_000_000),
-        .PAYLOAD_BITS(8)
-    ) uart_transmitter (
-        .CLK(CLK),
-        .reset(reset),
+//    #(
+//        .BIT_RATE(9600),
+//        .CLK_HZ(100_000_000),
+//        .PAYLOAD_BITS(8)
+//    ) 
+    uart_tx uart_transmitter (
+        .clk(CLK),
+        .resetn(reset),
         .uart_tx_en(uart_tx_en),
         .uart_tx_data(uart_tx_data),
         .uart_txd(tx),
@@ -87,8 +89,7 @@ module saat_guncelleme(
     
     always @* begin
         // Varsayilan atamalar
-        saniye_sonraki = saniye;
-        led_gosterimi = saniye;
+        saniye_sonraki = led_gosterimi;
         dakika_sonraki = dakika;
         saat_sonraki = saat;
         gun_sonraki = gun;
@@ -98,55 +99,55 @@ module saat_guncelleme(
 
         hiz_katsayisi_sonraki = hiz_katsayisi;
      
-         //                                                      UART Komutlari
-//    if (uart_rx_valid) begin
-//        // 'T' komutunu algila ve mevcut tarihi yazdir
-//        if (uart_rx_data == 8'h54) begin // ASCII 'T'
-//            uart_tx_en = 1'b1;
-//            uart_tx_data = "Tarih ve Saat: "; // Ornek baslik
+    //                                                            UART Komutlari
+    if (uart_rx_valid) begin
+        // 'T' komutunu algila ve mevcut tarihi yazdir
+        if (uart_rx_data == 8'h54) begin // ASCII 'T'
+            uart_tx_en = 1'b1;
+            uart_tx_data = "Tarih ve Saat: "; // Ornek baslik
+            
+            // Tarihi ve saati yazdir
+            // Her bir degeri ASCII olarak gonder
+            uart_tx_data = 8'h30 + (gun / 10); // gunun onluk basamagini gonder
+            uart_tx_data = 8'h30 + (gun % 10); // gunun birlik basamagini gonder
+            uart_tx_data = ".";
 
-//            // Tarihi ve saati yazdir
-//            // Her bir degeri ASCII olarak gonder
-//            uart_tx_data = 8'h30 + (gun / 10); // gun'un onluk basamagini gonder
-//            uart_tx_data = 8'h30 + (gun % 10); // gun'un birlik basamagini gonder
-//            uart_tx_data = ".";
+            uart_tx_data = 8'h30 + (ay / 10);  // ayin onluk basamagini gonder
+            uart_tx_data = 8'h30 + (ay % 10);  // ayin birlik basamagini gonder
+            uart_tx_data = ".";
 
-//            uart_tx_data = 8'h30 + (ay / 10);  // ay'in onluk basamagini gonder
-//            uart_tx_data = 8'h30 + (ay % 10);  // ay'in birlik basamagini gonder
-//            uart_tx_data = ".";
+            uart_tx_data = 8'h30 + ((yil / 1000) % 10); // yilin binlik basamagini gonder
+            uart_tx_data = 8'h30 + ((yil / 100) % 10);  // yilin yuzluk basamagini gonder
+            uart_tx_data = 8'h30 + ((yil / 10) % 10);   // yilin onluk basamagini gonder
+            uart_tx_data = 8'h30 + (yil % 10);          // yilin birlik basamagini gonder
+            uart_tx_data = " ";
 
-//            uart_tx_data = 8'h30 + ((yil / 1000) % 10); // yil'in binlik basamagini gonder
-//            uart_tx_data = 8'h30 + ((yil / 100) % 10);  // yil'in yuzluk basamagini gonder
-//            uart_tx_data = 8'h30 + ((yil / 10) % 10);   // yil'in onluk basamagini gonder
-//            uart_tx_data = 8'h30 + (yil % 10);          // yil'in birlik basamagini gonder
-//            uart_tx_data = " ";
+            uart_tx_data = 8'h30 + (saat / 10);  // saatin onluk basamagini gonder
+            uart_tx_data = 8'h30 + (saat % 10);  // saatin birlik basamagini gonder
+            uart_tx_data = ":";
 
-//            uart_tx_data = 8'h30 + (saat / 10);  // saat'in onluk basamagini gonder
-//            uart_tx_data = 8'h30 + (saat % 10);  // saat'in birlik basamagini gonder
-//            uart_tx_data = ":";
+            uart_tx_data = 8'h30 + (dakika / 10); // dakikanin onluk basamagini gonder
+            uart_tx_data = 8'h30 + (dakika % 10); // dakikanin birlik basamagini gonder
+            uart_tx_data = ":";
 
-//            uart_tx_data = 8'h30 + (dakika / 10); // dakika'nin onluk basamagini gonder
-//            uart_tx_data = 8'h30 + (dakika % 10); // dakika'nin birlik basamagini gonder
-//            uart_tx_data = ":";
+            uart_tx_data = 8'h30 + (led_gosterimi / 10); // saniyenin onluk basamagini gonder
+            uart_tx_data = 8'h30 + (led_gosterimi % 10); // saniyenin birlik basamagini gonder
 
-//            uart_tx_data = 8'h30 + (saniye / 10); // saniye'nin onluk basamagini gonder
-//            uart_tx_data = 8'h30 + (saniye % 10); // saniye'nin birlik basamagini gonder
+            uart_tx_en = 1'b0; // Gonderimi durdur
+        end
 
-//            uart_tx_en = 1'b0; // Gonderimi durdur
-//        end
-
-//        // 'G' komutunu algila ve yeni tarihi ayarla
-//        if (uart_rx_data == 8'h47) begin // ASCII 'G'
-//            uart_tx_en = 1'b0;
-//            // G komutundan sonra gelen veriyi ayr??t?r ve tarihi güncelle
-//            gun_sonraki = (uart_rx_data[7:4] * 10) + uart_rx_data[3:0]; // Gün
-//            ay_sonraki = (uart_rx_data[7:4] * 10) + uart_rx_data[3:0];  // Ay
-//            yil_sonraki = (uart_rx_data[7:4] * 1000) + (uart_rx_data[3:0] * 100) + (uart_rx_data[7:4] * 10) + uart_rx_data[3:0]; // Yil
-//            saat_sonraki = (uart_rx_data[7:4] * 10) + uart_rx_data[3:0]; // Saat
-//            dakika_sonraki = (uart_rx_data[7:4] * 10) + uart_rx_data[3:0]; // Dakika
-//            saniye_sonraki = (uart_rx_data[7:4] * 10) + uart_rx_data[3:0]; // Saniye
-//        end
-//    end
+        // 'G' komutunu algila ve yeni tarihi ayarla
+        if (uart_rx_data == 8'h47) begin // ASCII 'G'
+            uart_tx_en = 1'b0;
+            // G komutundan sonra gelen veriyi ayristir ve tarihi guncelle
+            gun_sonraki = (uart_rx_data[7:4] * 10) + uart_rx_data[3:0]; // gun
+            ay_sonraki = (uart_rx_data[7:4] * 10) + uart_rx_data[3:0];  // ay
+            yil_sonraki = (uart_rx_data[7:4] * 1000) + (uart_rx_data[3:0] * 100) + (uart_rx_data[7:4] * 10) + uart_rx_data[3:0]; // yil
+            saat_sonraki = (uart_rx_data[7:4] * 10) + uart_rx_data[3:0]; // saat
+            dakika_sonraki = (uart_rx_data[7:4] * 10) + uart_rx_data[3:0]; // dakika
+            saniye_sonraki = (uart_rx_data[7:4] * 10) + uart_rx_data[3:0]; // saniye
+        end
+    end
         
 
         if(hiz_degisikligi) begin
@@ -240,8 +241,8 @@ module saat_guncelleme(
         if (calisma_durumu) begin    
             if (sayac >= (BIR_SANIYE * hiz_katsayisi)) begin // hiz katsayisina göre saysin
                 sayac_sonraki = 0;
-                saniye_sonraki = saniye + 1;
-                if (saniye == 59) begin 
+                saniye_sonraki = led_gosterimi + 1;
+                if (led_gosterimi >= 59) begin 
                     saniye_sonraki = 0;
                     dakika_sonraki = dakika + 1;
                     if (dakika == 59) begin 
@@ -262,7 +263,9 @@ module saat_guncelleme(
                     end
                 end
             end
-        end
+        end else begin
+            saniye_sonraki[5:0] <= saniye_ayari[5:0];
+        end    
 
         // 7 segment display icin basamaklara ayirdik.
         saat_onluk_deger <= (saat / 10);
@@ -276,7 +279,7 @@ module saat_guncelleme(
 
     always @(posedge CLK or posedge reset) begin
         if (reset) begin
-            saniye <= 6'd0;
+            led_gosterimi <= 6'd0;
             dakika <= 6'd30;
             saat <= 5'd18;
             gun <= 5'd30;
@@ -290,7 +293,7 @@ module saat_guncelleme(
             hiz_katsayisi <= 13'd1;
 
         end else begin
-            saniye <= saniye_sonraki;
+            led_gosterimi <= saniye_sonraki;
             dakika <= dakika_sonraki;
             saat <= saat_sonraki;
             gun <= gun_sonraki;
@@ -298,7 +301,7 @@ module saat_guncelleme(
             yil <= yil_sonraki;
             
             if (temiz_sinyal_durdur_baslat && ~temiz_sinyal_onceki_durdur_baslat) begin
-                calisma_durumu <= ~calisma_durumu; // Sadece pozitif kenarda durum değiştir
+                calisma_durumu <= ~calisma_durumu; // Sadece pozitif kenarda durum de?i?tir
             end
             temiz_sinyal_onceki_durdur_baslat <= temiz_sinyal_durdur_baslat; // Önceki durumu güncelle
             

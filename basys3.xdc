@@ -7,23 +7,20 @@
 set_property PACKAGE_PIN W5 [get_ports CLK]
 set_property IOSTANDARD LVCMOS18 [get_ports CLK]
 create_clock -period 10.000 -name sys_clk_pin -waveform {0.000 5.000} -add [get_ports CLK]
-#set_property CLOCK_DEDICATED_ROUTE FALSE [get_nets CLK_IBUF]
-#set_property SEVERITY {Warning} [get_drc_checks NSTD-1]
-#set_property SEVERITY {Warning} [get_drc_checks UCIO-1]
 
-#  reset
 set_property PACKAGE_PIN R2 [get_ports {reset}]					
 	set_property IOSTANDARD LVCMOS18 [get_ports {reset}]
 set_property PACKAGE_PIN T1   [get_ports {hiz_degisikligi}] 
     set_property IOSTANDARD LVCMOS18 [get_ports {hiz_degisikligi}]
     
 # saniye ayarlanmasi 
-#set_property -dict { PACKAGE_PIN V17   IOSTANDARD LVCMOS33 } [get_ports {saniye_ayari[0]}]
-#set_property -dict { PACKAGE_PIN V16   IOSTANDARD LVCMOS33 } [get_ports {saniye_ayari[1]}]
-#set_property -dict { PACKAGE_PIN W16   IOSTANDARD LVCMOS33 } [get_ports {saniye_ayari[2]}]
-#set_property -dict { PACKAGE_PIN W17   IOSTANDARD LVCMOS33 } [get_ports {saniye_ayari[3]}]
-#set_property -dict { PACKAGE_PIN W15   IOSTANDARD LVCMOS33 } [get_ports {saniye_ayari[4]}]
-#set_property -dict { PACKAGE_PIN V15   IOSTANDARD LVCMOS33 } [get_ports {saniye_ayari[5]}]
+set_property -dict { PACKAGE_PIN V17   IOSTANDARD LVCMOS33 } [get_ports {saniye_ayari[0]}]
+set_property -dict { PACKAGE_PIN V16   IOSTANDARD LVCMOS33 } [get_ports {saniye_ayari[1]}]
+set_property -dict { PACKAGE_PIN W16   IOSTANDARD LVCMOS33 } [get_ports {saniye_ayari[2]}]
+set_property -dict { PACKAGE_PIN W17   IOSTANDARD LVCMOS33 } [get_ports {saniye_ayari[3]}]
+set_property -dict { PACKAGE_PIN W15   IOSTANDARD LVCMOS33 } [get_ports {saniye_ayari[4]}]
+set_property -dict { PACKAGE_PIN V15   IOSTANDARD LVCMOS33 } [get_ports {saniye_ayari[5]}]
+
 
 
 #  LEDs
@@ -33,6 +30,7 @@ set_property -dict { PACKAGE_PIN U19   IOSTANDARD LVCMOS33 } [get_ports {led_gos
 set_property -dict { PACKAGE_PIN V19   IOSTANDARD LVCMOS33 } [get_ports {led_gosterimi[3]}]
 set_property -dict { PACKAGE_PIN W18   IOSTANDARD LVCMOS33 } [get_ports {led_gosterimi[4]}]
 set_property -dict { PACKAGE_PIN U15   IOSTANDARD LVCMOS33 } [get_ports {led_gosterimi[5]}]
+
 
 # 7 Segment Display
 set_property -dict { PACKAGE_PIN W7   IOSTANDARD LVCMOS18 } [get_ports {seg[0]}]
