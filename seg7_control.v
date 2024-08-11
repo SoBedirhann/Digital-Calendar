@@ -14,16 +14,16 @@ module seg7_control(
     
     // Parameters for segment values
     parameter NULL  = 7'b111_1111;  // Turn off all segments
-    parameter ZERO  = 7'b100_0000;  // 0
-    parameter ONE   = 7'b111_1001;  // 1
-    parameter TWO   = 7'b010_0100;  // 2 
-    parameter THREE = 7'b011_0000;  // 3
-    parameter FOUR  = 7'b001_1001;  // 4
-    parameter FIVE  = 7'b001_0010;  // 5
-    parameter SIX   = 7'b000_0010;  // 6
-    parameter SEVEN = 7'b111_1000;  // 7
+    parameter ZERO  = 7'b000_0001;  // 0
+    parameter ONE   = 7'b100_1111;  // 1
+    parameter TWO   = 7'b001_0010;  // 2 
+    parameter THREE = 7'b000_0110;  // 3
+    parameter FOUR  = 7'b100_1100;  // 4
+    parameter FIVE  = 7'b010_0100;  // 5
+    parameter SIX   = 7'b010_0000;  // 6
+    parameter SEVEN = 7'b000_1111;  // 7
     parameter EIGHT = 7'b000_0000;  // 8
-    parameter NINE  = 7'b001_0000;  // 9
+    parameter NINE  = 7'b000_0100;  // 9
     
     
     // To select each anode in turn

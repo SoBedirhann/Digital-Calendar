@@ -29,43 +29,13 @@ module saat_guncelleme(
 
     localparam BIR_SANIYE = 100000000;
     
+    // basamaklarina ayirma islemi
     reg[3:0] deger = 4'd0, deger_sonraki;
-    reg [3:0] saat_birlik_deger , dakika_birlik_deger;
-    reg [2:0] saat_onluk_deger, dakika_onluk_deger;
-    // UART RX için sinyaller
-    wire [7:0] uart_rx_data;
-    wire uart_rx_valid;
-    wire uart_rx_break;
+    reg [3:0] saat_birlik_deger , dakika_birlik_deger, gun_birlik_deger, saniye_onluk_deger, saniye_birlik_deger;
+    reg [3:0] yil_binlik_deger, yil_yuzluk_deger, yil_onluk_deger, yil_birlik_deger, ay_birlik_deger;
+    reg [2:0] saat_onluk_deger, dakika_onluk_deger, gun_onluk_deger;
+    reg ay_onluk_deger;
     
-    // UART RX modülünün baslatilmasi
-    uart_rx uart_receiver (
-        .clk(CLK),
-        .resetn(reset),
-        .uart_rxd(rx),
-        .uart_rx_en(1'b1),
-        .uart_rx_break(uart_rx_break),
-        .uart_rx_valid(uart_rx_valid),
-        .uart_rx_data(uart_rx_data)
-    );
-
-    // UART TX modülünün eklenmesi
-    wire uart_tx_busy;
-    reg uart_tx_en;
-    reg [7:0] uart_tx_data;
-    
-//    #(
-//        .BIT_RATE(9600),
-//        .CLK_HZ(100_000_000),
-//        .PAYLOAD_BITS(8)
-//    ) 
-    uart_tx uart_transmitter (
-        .clk(CLK),
-        .resetn(reset),
-        .uart_tx_en(uart_tx_en),
-        .uart_tx_data(uart_tx_data),
-        .uart_txd(tx),
-        .uart_tx_busy(uart_tx_busy)
-    );
     
     wire temiz_sinyal_saat_arttir;
     wire temiz_sinyal_saat_azalt;
@@ -87,7 +57,57 @@ module saat_guncelleme(
     debounce debounce_dakika_azalt(.clk(CLK), .reset(reset), .buton(butonlar[3]), .temiz_sinyal(temiz_sinyal_dakika_azalt));
     debounce debounce_durdur_baslat(.clk(CLK), .reset(reset), .buton(butonlar[4]), .temiz_sinyal(temiz_sinyal_durdur_baslat));
     
-    always @* begin
+        // Clock frequency in hertz.
+    parameter CLK_HZ = 100000000;
+    parameter BIT_RATE = 9600;
+    parameter PAYLOAD_BITS = 8;
+    
+    wire [PAYLOAD_BITS-1:0] uart_rx_data;
+    wire uart_rx_valid;
+    wire uart_rx_break;
+    
+    wire uart_tx_busy;
+    reg [PAYLOAD_BITS-1:0] uart_tx_data;
+    reg uart_tx_en;
+
+//    assign uart_tx_data = uart_rx_data;
+//    assign uart_tx_en   = uart_rx_valid;
+    
+    reg [PAYLOAD_BITS-1:0] tx_data_reg;
+    reg tx_en_reg;
+    reg[4:0] sira = 5'd0;
+    
+    uart_rx #(
+    .BIT_RATE(BIT_RATE),
+    .PAYLOAD_BITS(PAYLOAD_BITS),
+    .CLK_HZ  (CLK_HZ  )
+    ) i_uart_rx(
+    .clk(CLK), // Top level system clock input.
+    .resetn (reset), // Asynchronous active low reset.
+    .uart_rxd (rx), // UART Recieve pin.
+    .uart_rx_en (1'b1), // Recieve enable
+    .uart_rx_break (uart_rx_break), // Did we get a BREAK message?
+    .uart_rx_valid (uart_rx_valid), // Valid data recieved and available.
+    .uart_rx_data (uart_rx_data)  // The recieved data.
+    );
+    
+    //
+    // UART Transmitter module.
+    //
+    uart_tx #(
+    .BIT_RATE(BIT_RATE),
+    .PAYLOAD_BITS(PAYLOAD_BITS),
+    .CLK_HZ  (CLK_HZ  )
+    ) i_uart_tx(
+    .clk (CLK),
+    .resetn (reset),
+    .uart_txd (tx),
+    .uart_tx_en (uart_tx_en),
+    .uart_tx_busy (uart_tx_busy),
+    .uart_tx_data (uart_tx_data) 
+    );    
+    
+    always @* begin    
         // Varsayilan atamalar
         saniye_sonraki = led_gosterimi;
         dakika_sonraki = dakika;
@@ -98,58 +118,10 @@ module saat_guncelleme(
         sayac_sonraki = sayac + 1;
 
         hiz_katsayisi_sonraki = hiz_katsayisi;
-     
-    //                                                            UART Komutlari
-    if (uart_rx_valid) begin
-        // 'T' komutunu algila ve mevcut tarihi yazdir
-        if (uart_rx_data == 8'h54) begin // ASCII 'T'
-            uart_tx_en = 1'b1;
-            uart_tx_data = "Tarih ve Saat: "; // Ornek baslik
-            
-            // Tarihi ve saati yazdir
-            // Her bir degeri ASCII olarak gonder
-            uart_tx_data = 8'h30 + (gun / 10); // gunun onluk basamagini gonder
-            uart_tx_data = 8'h30 + (gun % 10); // gunun birlik basamagini gonder
-            uart_tx_data = ".";
-
-            uart_tx_data = 8'h30 + (ay / 10);  // ayin onluk basamagini gonder
-            uart_tx_data = 8'h30 + (ay % 10);  // ayin birlik basamagini gonder
-            uart_tx_data = ".";
-
-            uart_tx_data = 8'h30 + ((yil / 1000) % 10); // yilin binlik basamagini gonder
-            uart_tx_data = 8'h30 + ((yil / 100) % 10);  // yilin yuzluk basamagini gonder
-            uart_tx_data = 8'h30 + ((yil / 10) % 10);   // yilin onluk basamagini gonder
-            uart_tx_data = 8'h30 + (yil % 10);          // yilin birlik basamagini gonder
-            uart_tx_data = " ";
-
-            uart_tx_data = 8'h30 + (saat / 10);  // saatin onluk basamagini gonder
-            uart_tx_data = 8'h30 + (saat % 10);  // saatin birlik basamagini gonder
-            uart_tx_data = ":";
-
-            uart_tx_data = 8'h30 + (dakika / 10); // dakikanin onluk basamagini gonder
-            uart_tx_data = 8'h30 + (dakika % 10); // dakikanin birlik basamagini gonder
-            uart_tx_data = ":";
-
-            uart_tx_data = 8'h30 + (led_gosterimi / 10); // saniyenin onluk basamagini gonder
-            uart_tx_data = 8'h30 + (led_gosterimi % 10); // saniyenin birlik basamagini gonder
-
-            uart_tx_en = 1'b0; // Gonderimi durdur
-        end
-
-        // 'G' komutunu algila ve yeni tarihi ayarla
-        if (uart_rx_data == 8'h47) begin // ASCII 'G'
-            uart_tx_en = 1'b0;
-            // G komutundan sonra gelen veriyi ayristir ve tarihi guncelle
-            gun_sonraki = (uart_rx_data[7:4] * 10) + uart_rx_data[3:0]; // gun
-            ay_sonraki = (uart_rx_data[7:4] * 10) + uart_rx_data[3:0];  // ay
-            yil_sonraki = (uart_rx_data[7:4] * 1000) + (uart_rx_data[3:0] * 100) + (uart_rx_data[7:4] * 10) + uart_rx_data[3:0]; // yil
-            saat_sonraki = (uart_rx_data[7:4] * 10) + uart_rx_data[3:0]; // saat
-            dakika_sonraki = (uart_rx_data[7:4] * 10) + uart_rx_data[3:0]; // dakika
-            saniye_sonraki = (uart_rx_data[7:4] * 10) + uart_rx_data[3:0]; // saniye
-        end
-    end
         
-
+        uart_tx_data = tx_data_reg;
+        uart_tx_en = tx_en_reg;
+        
         if(hiz_degisikligi) begin
             if(hiz_katsayisi < 8192) begin
                 hiz_katsayisi_sonraki = hiz_katsayisi + 1;
@@ -270,9 +242,27 @@ module saat_guncelleme(
         // 7 segment display icin basamaklara ayirdik.
         saat_onluk_deger <= (saat / 10);
         saat_birlik_deger <= (saat % 10);
+        
         dakika_onluk_deger <= (dakika / 10);
         dakika_birlik_deger <= (dakika % 10);
+        
+        saniye_onluk_deger <= (led_gosterimi / 10);
+        saniye_onluk_deger <= (led_gosterimi % 10);
+        
+        gun_onluk_deger <= (gun / 10);
+        gun_birlik_deger <= (gun % 10);
+        
+        ay_onluk_deger <= (ay / 10);
+        ay_birlik_deger <= (ay % 10);
+        
+        yil_binlik_deger <= (yil / 1000);
+        yil_yuzluk_deger <= ((yil - yil_binlik_deger * 1000) / 100);
+        yil_onluk_deger <= ((yil - yil_binlik_deger * 1000 - yil_yuzluk_deger * 100) / 10);
+        yil_birlik_deger <= ((yil - yil_binlik_deger * 1000 - yil_yuzluk_deger * 100 - yil_onluk_deger * 10) % 10);
+        
         dp <= 1'd1;
+        
+
     end  
     
     seg7_control(.clk_100MHz(CLK),.reset(reset),.hrs_tens(saat_onluk_deger),.hrs_ones(saat_birlik_deger),.mins_tens(dakika_onluk_deger),.mins_ones(dakika_birlik_deger),.seg(seg),.an(an));
@@ -291,7 +281,7 @@ module saat_guncelleme(
             sayac <= 30'd0;
 
             hiz_katsayisi <= 13'd1;
-
+            
         end else begin
             led_gosterimi <= saniye_sonraki;
             dakika <= dakika_sonraki;
@@ -314,6 +304,115 @@ module saat_guncelleme(
             temiz_sinyal_onceki_saat_azalt <= temiz_sinyal_saat_azalt;
             temiz_sinyal_onceki_dakika_arttir <= temiz_sinyal_dakika_arttir;
             temiz_sinyal_onceki_dakika_azalt <= temiz_sinyal_dakika_azalt;
+            
+            if(uart_rx_valid) begin
+                if(uart_rx_data == 8'h54) begin
+                    case (sira)
+                        5'd0: begin
+                            tx_data_reg <= gun_onluk_deger+ 8'd48;  // Gün onluk basamağı
+                            tx_en_reg <= 1'b1;
+                            sira <= 5'd1;
+                        end
+                        5'd1: begin
+                            tx_data_reg <= gun_birlik_deger + 8'd48;  // Gün birlik basamağı
+                            tx_en_reg <= 1'b1;
+                            sira <= 5'd2;
+                        end
+                        5'd2: begin
+                            tx_data_reg <= 8'h2E;  // '.' karakteri
+                            tx_en_reg <= 1'b1;
+                            sira <= 5'd3;
+                        end
+                        5'd3: begin
+                            tx_data_reg <= ay_onluk_deger + 8'd48;  // Ay onluk basamağı
+                            tx_en_reg <= 1'b1;
+                            sira <= 5'd4;
+                        end
+                        5'd4: begin
+                            tx_data_reg <= ay_birlik_deger + 8'd48;  // Ay birlik basamağı
+                            tx_en_reg <= 1'b1;
+                            sira <= 5'd5;
+                        end
+                        5'd5: begin
+                            tx_data_reg <= 8'h2E;  // '.' karakteri
+                            tx_en_reg <= 1'b1;
+                            sira <= 5'd6;
+                        end
+                        5'd6: begin
+                            tx_data_reg <= yil_binlik_deger + 8'd48;  // Yıl binler basamağı
+                            tx_en_reg <= 1'b1;
+                            sira <= 5'd7;
+                        end
+                        5'd7: begin
+                            tx_data_reg <= yil_yuzluk_deger + 8'd48;  // Yıl yüzler basamağı
+                            tx_en_reg <= 1'b1;
+                            sira <= 5'd8;
+                        end
+                        5'd8: begin
+                            tx_data_reg <= yil_onluk_deger + 8'd48;  // Yıl onlar basamağı
+                            tx_en_reg <= 1'b1;
+                            sira <= 5'd9;
+                        end
+                        5'd9: begin
+                            tx_data_reg <= yil_birlik_deger + 8'd48;  // Yıl birlik basamağı
+                            tx_en_reg <= 1'b1;
+                            sira <= 5'd10;
+                        end
+                        5'd10: begin
+                            tx_data_reg <= 8'd32;  // bosluk karakteri
+                            tx_en_reg <= 1'b1;
+                            sira <= 5'd11;
+                        end
+                        5'd11: begin
+                            tx_data_reg <= saat_onluk_deger + 8'd48;  // Saat onluk basamağı
+                            tx_en_reg <= 1'b1;
+                            sira <= 5'd12;
+                        end
+                        5'd12: begin
+                            tx_data_reg <= saat_birlik_deger + 8'd48;  // Saat birlik basamağı
+                            tx_en_reg <= 1'b1;
+                            sira <= 5'd13;
+                        end
+                        5'd13: begin
+                            tx_data_reg <= 8'd58;  // ':' karakteri
+                            tx_en_reg <= 1'b1;
+                            sira <= 5'd14;
+                        end
+                        5'd14: begin
+                            tx_data_reg <= dakika_onluk_deger + 8'd48;  // Dakika onluk basamağı
+                            tx_en_reg <= 1'b1;
+                            sira <= 5'd15;
+                        end
+                        5'd15: begin
+                            tx_data_reg <= dakika_birlik_deger + 8'd48;  // Dakika birlik basamağı
+                            tx_en_reg <= 1'b1;
+                            sira <= 5'd16;
+                        end
+                        5'd16: begin
+                            tx_data_reg <= 8'd58;  // ':' karakteri
+                            tx_en_reg <= 1'b1;
+                            sira <= 5'd17;
+                        end
+                        5'd17: begin
+                            tx_data_reg <= saniye_onluk_deger + 8'd48;  // Saniye onluk basamagi
+                            tx_en_reg <= 1'b1;
+                            sira <= 5'd18;
+                        end
+                        5'd18: begin
+                            tx_data_reg <= saniye_birlik_deger + 8'd48;  // Saniye birlik basamağı
+                            tx_en_reg <= 1'b1;
+                            sira <= 5'd19;
+                        end
+                        5'd19: begin
+                            tx_en_reg <= 1'b0;  // Gönderim tamamlandı, sinyal kapatılıyor
+                            sira <= 5'd0;
+                        end
+                    endcase
+                    
+                    
+                end
+            end
+            
         end
     end
     

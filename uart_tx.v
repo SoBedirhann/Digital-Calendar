@@ -16,10 +16,6 @@ input  wire         uart_tx_en  , // Send the data on uart_tx_data
 input  wire [PAYLOAD_BITS-1:0]   uart_tx_data  // The data to be sent
 );
 
-// --------------------------------------------------------------------------- 
-// External parameters.
-// 
-
 //
 // Input bit rate of the UART line.
 parameter   BIT_RATE        = 9600; // bits / sec

@@ -1,4 +1,11 @@
 
+// 
+// Module: uart_rx 
+// 
+// Notes:
+// - UART reciever module.
+//
+
 module uart_rx(
 input  wire       clk          , // Top level system clock input.
 input  wire       resetn       , // Asynchronous active low reset.
