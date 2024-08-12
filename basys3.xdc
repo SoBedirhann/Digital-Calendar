@@ -57,3 +57,20 @@ set_property -dict { PACKAGE_PIN U17   IOSTANDARD LVCMOS33 } [get_ports {butonla
 
 set_property -dict { PACKAGE_PIN B18  IOSTANDARD LVCMOS33 } [get_ports {rx}]
 set_property -dict { PACKAGE_PIN A18  IOSTANDARD LVCMOS33 } [get_ports {tx}]
+
+
+
+#VGA Connector
+set_property PACKAGE_PIN J19 [get_ports {rgb[2]}]				
+	set_property IOSTANDARD LVCMOS33 [get_ports {rgb[2]}]
+
+set_property PACKAGE_PIN G17 [get_ports {rgb[1]}]				
+	set_property IOSTANDARD LVCMOS33 [get_ports {rgb[1]}]
+		
+
+set_property PACKAGE_PIN K18 [get_ports {rgb[0]}]				
+	set_property IOSTANDARD LVCMOS33 [get_ports {rgb[0]}]
+
+
+set_property -dict { PACKAGE_PIN P19  IOSTANDARD LVCMOS33 } [get_ports {hsync}]
+set_property -dict { PACKAGE_PIN R19  IOSTANDARD LVCMOS33 } [get_ports {vsync}]
